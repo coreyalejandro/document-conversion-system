@@ -5,6 +5,7 @@ import { Copy, Search, Download, Share2 } from 'lucide-react';
 import { useTracking } from '@/telemetry/tracking';
 import { Document, DocNode } from '@/types';
 import toast from 'react-hot-toast';
+import { pluginRegistry } from '@/plugins/registry';
 
 interface DocumentViewerProps {
   document: Document;
@@ -13,7 +14,14 @@ interface DocumentViewerProps {
 export function DocumentViewer({ document }: DocumentViewerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [plugins, setPlugins] = useState(pluginRegistry.getEnabledPlugins());
   const tracking = useTracking();
+
+  useEffect(() => {
+    return pluginRegistry.subscribe(() => {
+      setPlugins(pluginRegistry.getEnabledPlugins());
+    });
+  }, []);
 
   useEffect(() => {
     // Track document view
@@ -282,6 +290,11 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
       <div className="document-content space-y-4">
         {document.nodes.map((node) => renderNode(node))}
       </div>
+
+      {/* Plugin Slot */}
+      {plugins.map((plugin) => (
+        <plugin.component key={plugin.id} document={document} />
+      ))}
 
       {/* Document Footer */}
       <div className="border-t border-border pt-4 mt-8">
