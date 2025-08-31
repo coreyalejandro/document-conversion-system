@@ -5,6 +5,7 @@ import { Copy, Search, Download, Share2 } from 'lucide-react';
 import { useTracking } from '@/telemetry/tracking';
 import { Document, DocNode } from '@/types';
 import toast from 'react-hot-toast';
+import { getDocument } from '@/storage/indexed-db';
 
 interface DocumentViewerProps {
   document: Document;
@@ -13,16 +14,25 @@ interface DocumentViewerProps {
 export function DocumentViewer({ document }: DocumentViewerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [currentDocument, setCurrentDocument] = useState<Document>(document);
   const tracking = useTracking();
 
   useEffect(() => {
-    // Track document view
-    tracking.trackDocumentOperation('viewed', document.id, {
-      title: document.title,
-      wordCount: document.meta.wordCount,
-      theme: document.theme,
+    void getDocument(document.id).then((stored) => {
+      if (stored) {
+        setCurrentDocument(stored);
+      }
     });
-  }, [document.id, document.title, document.meta.wordCount, document.theme, tracking]);
+  }, [document.id]);
+
+  useEffect(() => {
+    // Track document view
+    tracking.trackDocumentOperation('viewed', currentDocument.id, {
+      title: currentDocument.title,
+      wordCount: currentDocument.meta.wordCount,
+      theme: currentDocument.theme,
+    });
+  }, [currentDocument.id, currentDocument.title, currentDocument.meta.wordCount, currentDocument.theme, tracking]);
 
   const handleCopyCode = async (text: string) => {
     try {
@@ -34,7 +44,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
         details: { textLength: text.length },
         sessionId: tracking.getSessionId(),
         userId: tracking.getUserId(),
-        documentId: document.id,
+        documentId: currentDocument.id,
       });
     } catch (error) {
       toast.error('Failed to copy code');
@@ -51,7 +61,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
         details: { textLength: text.length },
         sessionId: tracking.getSessionId(),
         userId: tracking.getUserId(),
-        documentId: document.id,
+        documentId: currentDocument.id,
       });
     } catch (error) {
       toast.error('Failed to copy section');
@@ -68,7 +78,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
       details: { query: searchQuery },
       sessionId: tracking.getSessionId(),
       userId: tracking.getUserId(),
-      documentId: document.id,
+      documentId: currentDocument.id,
     });
 
     // Simulate search
@@ -79,9 +89,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
   };
 
   const handleExport = () => {
-    tracking.trackDocumentOperation('exported', document.id, {
+    tracking.trackDocumentOperation('exported', currentDocument.id, {
       format: 'markdown',
-      title: document.title,
+      title: currentDocument.title,
     });
     toast.success('Document exported successfully');
   };
@@ -90,10 +100,10 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
     tracking.trackEvent({
       type: 'document.shared',
       action: 'share_initiated',
-      details: { documentId: document.id },
+      details: { documentId: currentDocument.id },
       sessionId: tracking.getSessionId(),
       userId: tracking.getUserId(),
-      documentId: document.id,
+      documentId: currentDocument.id,
     });
     toast.success('Share link copied to clipboard');
   };
@@ -233,9 +243,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
       {/* Document Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{document.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{currentDocument.title}</h1>
           <p className="text-muted-foreground">
-            {document.meta.wordCount} words • {document.meta.readingTime} min read
+            {currentDocument.meta.wordCount} words • {currentDocument.meta.readingTime} min read
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -280,20 +290,20 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
       {/* Document Content */}
       <div className="document-content space-y-4">
-        {document.nodes.map((node) => renderNode(node))}
+        {currentDocument.nodes.map((node) => renderNode(node))}
       </div>
 
       {/* Document Footer */}
       <div className="border-t border-border pt-4 mt-8">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            <p>Last updated: {new Date(document.updatedAt).toLocaleDateString()}</p>
-            <p>Version: {document.version}</p>
+            <p>Last updated: {new Date(currentDocument.updatedAt).toLocaleDateString()}</p>
+            <p>Version: {currentDocument.version}</p>
           </div>
           <div className="flex items-center space-x-4">
-            <span>Theme: {document.theme}</span>
+            <span>Theme: {currentDocument.theme}</span>
             <span>•</span>
-            <span>Source: {document.meta.source.type}</span>
+            <span>Source: {currentDocument.meta.source.type}</span>
           </div>
         </div>
       </div>

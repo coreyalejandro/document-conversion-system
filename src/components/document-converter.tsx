@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, File, Loader2, CheckCircle } from 'lucide-react';
 import { useTracking } from '@/telemetry/tracking';
 import { Document } from '@/types';
 import { nanoid } from 'nanoid';
 import toast from 'react-hot-toast';
+import {
+  saveDocument,
+  getDocument,
+  listDocuments,
+  deleteDocument,
+} from '@/storage/indexed-db';
 
 interface DocumentConverterProps {
   onConversionStart: () => void;
@@ -22,6 +28,28 @@ export function DocumentConverter({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tracking = useTracking();
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  useEffect(() => {
+    void refreshDocuments();
+  }, []);
+
+  const refreshDocuments = async () => {
+    const docs = await listDocuments();
+    setDocuments(docs);
+  };
+
+  const handleLoadDocument = async (id: string) => {
+    const doc = await getDocument(id);
+    if (doc) {
+      onDocumentConverted(doc);
+    }
+  };
+
+  const handleDeleteDocument = async (id: string) => {
+    await deleteDocument(id);
+    await refreshDocuments();
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -174,7 +202,8 @@ export function DocumentConverter({
         conversionTime: document.tracking.metrics.conversion.conversionTime,
         fidelityScore: document.tracking.metrics.conversion.fidelityScore,
       });
-
+      await saveDocument(document);
+      await refreshDocuments();
       onDocumentConverted(document);
       setSelectedFile(null);
       toast.success('Document converted successfully!');
@@ -345,6 +374,34 @@ export function DocumentConverter({
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Saved Documents */}
+      {documents.length > 0 && (
+        <div className="bg-muted/50 rounded-lg p-4">
+          <h4 className="font-medium mb-2">Saved Documents</h4>
+          <ul className="space-y-1">
+            {documents.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between">
+                <span>{doc.title}</span>
+                <div className="space-x-2">
+                  <button
+                    onClick={() => void handleLoadDocument(doc.id)}
+                    className="text-primary hover:underline"
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => void handleDeleteDocument(doc.id)}
+                    className="text-red-500 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
