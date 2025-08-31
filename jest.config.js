@@ -9,4 +9,12 @@ setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
 transform: {
   '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: { jsx: 'react-jsx', module: 'commonjs' } }],
 },
+globals: {
+  'ts-jest': {
+    tsconfig: {
+      jsx: 'react-jsx',
+      module: 'commonjs',
+    },
+  },
+},
 };
