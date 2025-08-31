@@ -81,7 +81,8 @@
     "@types/crypto-js": "^4.2.0",
     "@types/dompurify": "^3.0.0",
     "@types/react-syntax-highlighter": "^15.5.0",
-    "@types/react-window": "^1.8.0"
+    "@types/react-window": "^1.8.0",
+    "fake-indexeddb": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0",
