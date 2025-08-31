@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Activity, Users, Clock, TrendingUp, Eye, Download, Search } from 'lucide-react';
 import { useTracking } from '@/telemetry/tracking';
+import { useTelemetryAnalyzer } from '@/telemetry/analyzer';
 import { TrackingEvent } from '@/types';
 
 export function TrackingDashboard() {
@@ -10,6 +11,8 @@ export function TrackingDashboard() {
   const tracking = useTracking();
   const [events, setEvents] = useState<TrackingEvent[]>(tracking.getEvents());
   const [metrics, setMetrics] = useState<Map<string, number>>(tracking.getMetrics());
+  const analyzer = useTelemetryAnalyzer();
+  const [insights, setInsights] = useState(analyzer.getInsights());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -19,6 +22,13 @@ export function TrackingDashboard() {
 
     return () => clearInterval(interval);
   }, [tracking]);
+
+  useEffect(() => {
+    analyzer.ingest(events);
+    setInsights(analyzer.getInsights());
+    void analyzer.persistAnalytics();
+    void analyzer.adjustConversionRules();
+  }, [events, analyzer]);
 
   const getEventTypeCount = (type: string) => {
     return events.filter((event: TrackingEvent) => event.type === type).length;
@@ -95,7 +105,7 @@ export function TrackingDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex items-center space-x-3">
                   <Activity className="h-8 w-8 text-primary" />
@@ -134,6 +144,16 @@ export function TrackingDashboard() {
                       {Math.round((events.length / Math.max(1, Date.now() - new Date(events[0]?.timestamp ?? Date.now()).getTime() / 1000)) * 100) / 100}
                     </p>
                     <p className="text-sm text-muted-foreground">Events/sec</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="text-2xl font-bold">{Math.round(insights.conversions.successRate * 100)}%</p>
+                    <p className="text-sm text-muted-foreground">Conversion Success</p>
                   </div>
                 </div>
               </div>
